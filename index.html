@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Home IDS Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div>
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+        <div class="brand-card">
+          <div class="brand-icon">⛨</div>
+          <div>
+            <p class="eyebrow">Home Security</p>
+            <h1>Smart Home IDS</h1>
+          </div>
+        </div>
+
+        <nav class="nav-links" id="navLinks">
+          <a href="#dashboard" class="nav-link active" data-section="dashboard"><span>⌂</span> Dashboard</a>
+          <a href="#devices" class="nav-link" data-section="devices"><span>📱</span> Devices</a>
+          <a href="#traffic" class="nav-link" data-section="traffic"><span>📈</span> Traffic</a>
+          <a href="#alerts" class="nav-link" data-section="alerts"><span>⚠</span> Alerts <span class="nav-badge" id="navAlertBadge">0</span></a>
+          <a href="#settings" class="nav-link" data-section="settings"><span>⚙</span> Settings</a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="network-pill" id="networkPill">
+          <span class="status-dot success"></span>
+          <span id="networkStatusText">Network: Protected</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Real-time monitoring</p>
+          <h2 id="pageTitle">Dashboard</h2>
+        </div>
+        <div class="topbar-actions">
+          <div class="clock-card" id="clockDisplay">--</div>
+          <button class="bell-btn" id="bellBtn" title="Open alerts">🔔<span class="badge" id="bellBadge">0</span></button>
+        </div>
+      </header>
+
+      <div class="top-tabs" id="topTabs">
+        <button class="top-tab active" data-section="dashboard">Dashboard</button>
+        <button class="top-tab" data-section="alerts">Alerts</button>
+        <button class="top-tab" data-section="traffic">Traffic</button>
+        <button class="top-tab" data-section="settings">Settings</button>
+      </div>
+
+      <section class="page-section active" id="dashboardSection">
+        <div class="stat-grid">
+          <article class="panel stat-card accent-border">
+            <p>Total Devices</p>
+            <h3 id="statDevices">0</h3>
+            <small>Connected and monitored</small>
+          </article>
+          <article class="panel stat-card accent-border">
+            <p>Network Status</p>
+            <h3 id="statStatus">NORMAL</h3>
+            <small id="statStatusSub">All traffic appears safe</small>
+          </article>
+          <article class="panel stat-card accent-border">
+            <p>Alerts Today</p>
+            <h3 id="statAlerts">0</h3>
+            <small>Live detections this session</small>
+          </article>
+          <article class="panel stat-card accent-border">
+            <p>Packets Analyzed</p>
+            <h3 id="statPackets">0</h3>
+            <small>Updated every second</small>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <h3>Live Network Traffic (KB/s)</h3>
+              <span class="pill success">LIVE</span>
+            </div>
+            <canvas id="trafficChart"></canvas>
+          </article>
+
+          <article class="panel alerts-panel">
+            <div class="panel-heading">
+              <h3>Recent Alerts Feed</h3>
+              <span class="pill warning">Updated live</span>
+            </div>
+            <div class="alert-feed" id="recentAlerts"></div>
+          </article>
+        </div>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Connected Devices</h3>
+            <span class="pill info">8 active nodes</span>
+          </div>
+          <div class="device-row" id="deviceCards"></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="devicesSection">
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Connected Device Inventory</h3>
+            <input type="search" id="deviceSearch" class="search-box" placeholder="Filter by name or IP" />
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Icon</th>
+                  <th>Device Name</th>
+                  <th>IP Address</th>
+                  <th>MAC Address</th>
+                  <th>First Seen</th>
+                  <th>Last Active</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTableBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="page-section" id="trafficSection">
+        <div class="traffic-grid">
+          <article class="panel chart-panel">
+            <h3>Hourly Traffic Volume</h3>
+            <canvas id="hourlyTrafficChart"></canvas>
+          </article>
+          <article class="panel chart-panel">
+            <h3>Traffic by Protocol</h3>
+            <canvas id="protocolChart"></canvas>
+          </article>
+        </div>
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Live Packet Log</h3>
+            <span class="pill success">Auto-scroll</span>
+          </div>
+          <div class="table-wrap log-table-wrap">
+            <table class="data-table compact-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Source IP</th>
+                  <th>Destination IP</th>
+                  <th>Protocol</th>
+                  <th>Size</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="packetLogBody"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section class="page-section" id="alertsSection">
+        <article class="panel">
+          <div class="panel-heading filters-row">
+            <div class="filter-group">
+              <label>Severity</label>
+              <select id="severityFilter">
+                <option value="ALL">ALL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Status</label>
+              <select id="statusFilter">
+                <option value="ALL">ALL</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="RESOLVED">RESOLVED</option>
+              </select>
+            </div>
+          </div>
+          <div class="alerts-stack" id="alertsList"></div>
+        </article>
+      </section>
+
+      <section class="page-section" id="settingsSection">
+        <div class="settings-grid">
+          <article class="panel">
+            <h3>Network Configuration</h3>
+            <label>Router IP</label>
+            <input type="text" class="field" id="routerIp" value="192.168.1.1" />
+            <label>Subnet Mask</label>
+            <input type="text" class="field" id="subnetMask" value="255.255.255.0" />
+            <label>Monitoring Interface</label>
+            <select class="field" id="interfaceSelect">
+              <option>eth0</option>
+              <option>eth1</option>
+              <option selected>wlan0</option>
+            </select>
+            <button class="primary-btn" id="saveSettingsBtn">Save Settings</button>
+          </article>
+          <article class="panel">
+            <h3>Alert Thresholds</h3>
+            <label>Port scan sensitivity</label>
+            <div class="toggle-row">
+              <button class="chip active" data-sensitivity="Low">Low</button>
+              <button class="chip" data-sensitivity="Medium">Medium</button>
+              <button class="chip" data-sensitivity="High">High</button>
+            </div>
+            <label>Traffic spike threshold <strong id="thresholdLabel">4 MB/s</strong></label>
+            <input type="range" id="thresholdSlider" min="2" max="12" value="4" />
+            <label class="switch-row"><span>Auto-block suspicious devices</span><input type="checkbox" id="autoBlockToggle" checked /></label>
+            <label class="switch-row"><span>Alert notification sound</span><input type="checkbox" id="soundToggle" checked /></label>
+          </article>
+          <article class="panel">
+            <h3>About</h3>
+            <ul class="about-list">
+              <li><strong>System:</strong> Smart Home IDS v1.0.0</li>
+              <li><strong>Status:</strong> Development Build</li>
+              <li><strong>Team:</strong> Daniel Rodriguez, Nicolas Pacheco, Simrann Gupta</li>
+              <li><strong>Institution:</strong> Wentworth Institute of Technology</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-backdrop" id="alertModal" aria-hidden="true">
+    <div class="modal-card">
+      <button class="modal-close" id="closeModal">×</button>
+      <h3 id="modalTitle">Alert Details</h3>
+      <p id="modalBody"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
