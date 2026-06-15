@@ -321,8 +321,11 @@ function initEvents() {
 
 async function loadPcapData() {
 
-    const response = await fetch("traffic_data.json");
+    const response = await fetch("/api/traffic");
+
     const data = await response.json();
+
+    console.log(data);
 
     state.packets = data.packets;
     state.packetsAnalyzed = data.packet_count;
@@ -331,22 +334,6 @@ async function loadPcapData() {
 
     document.getElementById("statPackets").textContent =
         data.packet_count.toLocaleString();
-
-    const inbound = [];
-    const outbound = [];
-
-    data.packets.forEach(packet => {
-        inbound.push(packet.size);
-        outbound.push(packet.size * 0.8);
-    });
-
-    window.trafficChart.data.labels =
-        inbound.map((_, i) => i + 1);
-
-    window.trafficChart.data.datasets[0].data = inbound;
-    window.trafficChart.data.datasets[1].data = outbound;
-
-    window.trafficChart.update();
 }
 
 function init() {
@@ -354,20 +341,16 @@ function init() {
   initEvents();
   updateClock();
   setInterval(updateClock, 1000);
-  //setInterval(simulateTraffic, 1000);
-  //setInterval(() => generateAlert(), rand(8000, 15000));
-  //updateSidebarStatus();
-  updateBadges();
-  //renderRecentAlerts();
-  //renderDevices();
-  //renderAlerts();
-  //renderPacketLog();
   updateCharts();
 }
 
 async function start() {
+
     init();
+
     await loadPcapData();
+
+    setInterval(loadPcapData, 3000);
 }
 
 start();
