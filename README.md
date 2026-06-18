@@ -10,23 +10,43 @@ The Smart Home IDS Project captures network traffic, analyzes the captured data,
 
 ## Setup
 
-### 1. Create the Project Directory
+### 1. Clone github repo into your directory
 
-Create a new directory for the project and navigate into it:
+Cd into the folder
 
 ```bash
-mkdir SeniorProject-SmartHomeIDS
 cd SeniorProject-SmartHomeIDS
 ```
 
-### 2. Add the Project Files
+### 2. Change the network interface in server.py to the one your machines uses
 
-Copy all project source files into the `SeniorProject-SmartHomeIDS` directory.
+<img width="753" height="141" alt="image" src="https://github.com/user-attachments/assets/9bea0f7c-18ae-48bb-966f-bfaf1555ce80" />
+should be on line 22 if that helps
+
 
 ---
 
-### 3. Run server.py in your directory
+### 3. Install python packages
+when you run
+```bash
+python3 server.py
+```
+You may need to install some python packages for that just run the following
+```bash
+sudo apt install python3-flask
+sudo apt install python3-scapy
+```
+Those should be only two you need
 
+### 4. Running server.py
+After you've installed the packages you are ready to run
+```bash
+server.py
+```
+simply type
+```bash
+sudo python3 server.py
+```
 
 ## Viewing the Dashboard
 
