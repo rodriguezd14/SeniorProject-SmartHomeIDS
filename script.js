@@ -330,6 +330,19 @@ async function loadPcapData() {
     state.packets = data.packets;
     state.packetsAnalyzed = data.packet_count;
 
+    // Calculate total KB for this batch and push into the Live Network Chart in the Dashboard 
+    const totalKB = data.packets.reduce((sum, pkt) => sum + pkt.size, 0); 
+    const inbound = parseFloat(totalKB.toFixed(2)); 
+    const outbound = parseFloat((totalKB * 0.6).toFixed(2)); 
+
+    state.trafficSeries.inbound.push(inbound); 
+    state.trafficSeries.outbound.push(outbound);
+
+    // Keep the chart window to the last 60 data points 
+    if (state.trafficSeries.inbound.length > 60) state.trafficSeries.inbound.shift(); 
+    if (state.trafficSeries.outbound.length > 60) state.trafficSeries.outbound.shift(); 
+
+    updateCharts(); 
     renderPacketLog();
 
     document.getElementById("statPackets").textContent =
