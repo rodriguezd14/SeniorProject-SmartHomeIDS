@@ -10,6 +10,7 @@ const state = {
   trafficSeries: { inbound: [], outbound: [] },
   liveAlertTimer: null,
   modalAlert: null,
+  iconFilter: null,
 };
 
 const refs = {
@@ -91,7 +92,12 @@ function renderDevices() {
   `).join('');
 
   const query = refs.deviceSearch.value.toLowerCase();
-  const rows = state.devices.filter(device => `${device.name} ${device.ip}`.toLowerCase().includes(query));
+  const rows = state.devices.filter(device => {
+    const matchesSearch = `${device.name} ${device.ip}`.toLowerCase().includes(query);
+    const matchesIcon = state.iconFilter ? device.icon === state.iconFilter : true;
+    return matchesSearch && matchesIcon;
+  });
+
   refs.deviceTableBody.innerHTML = rows.map(device => `
     <tr class="${device.status === 'Blocked' ? 'blocked-row' : ''}">
       <td>${device.icon}</td>
@@ -109,6 +115,19 @@ function renderDevices() {
       </td>
     </tr>
   `).join('');
+}
+
+function filterByIcon(icon) {
+    if (state.iconFilter === icon) {
+        state.iconFilter = null;
+    } else {
+        state.iconFilter = icon;
+    }
+    // Update legend item highlight
+    document.querySelectorAll('.legend-item').forEach(item => {
+        item.classList.toggle('legend-active', item.dataset.icon === state.iconFilter);
+    });
+    renderDevices();
 }
 
 function renderAlerts() {
@@ -325,28 +344,58 @@ async function loadPcapData() {
 
     const data = await response.json();
 
-    console.log(data);
-
     state.packets = data.packets;
     state.packetsAnalyzed = data.packet_count;
 
-    // Calculate total KB for this batch and push into the Live Network Chart in the Dashboard 
-    const totalKB = data.packets.reduce((sum, pkt) => sum + pkt.size, 0); 
-    const inbound = parseFloat(totalKB.toFixed(2)); 
-    const outbound = parseFloat((totalKB * 0.6).toFixed(2)); 
+    // Populate devices from API data
+    state.devices = data.devices.map((ip, index) => {
+        let icon = '💻';
+        let name = `Host-${index + 1}`;
 
-    state.trafficSeries.inbound.push(inbound); 
+        if (ip === '192.168.174.129') {
+            icon = '🖥️'; name = 'This Machine';
+        } else if (ip.endsWith('.1')) {
+            icon = '📡'; name = 'Gateway/Router';
+        } else if (ip.endsWith('.2')) {
+            icon = '🔗'; name = 'DNS Server';
+        } else if (ip.startsWith('239.') || ip.startsWith('255.')) {
+            icon = '📢'; name = 'Multicast';
+        } else if (!ip.startsWith('192.168.')) {
+            icon = '🌍'; name = `External-${index + 1}`;
+        }
+
+        return {
+            id: index,
+            name: name,
+            ip: ip,
+            mac: 'N/A',
+            icon: icon,
+            status: 'Normal',
+            firstSeen: formatTime(),
+            lastSeen: formatTime(),
+        };
+    });
+
+    // Calculate total KB for this batch and push into the Live Network Chart in the Dashboard
+    const totalKB = data.packets.reduce((sum, pkt) => sum + pkt.size, 0);
+    const inbound = parseFloat(totalKB.toFixed(2));
+    const outbound = parseFloat((totalKB * 0.6).toFixed(2));
+
+    state.trafficSeries.inbound.push(inbound);
     state.trafficSeries.outbound.push(outbound);
 
-    // Keep the chart window to the last 60 data points 
-    if (state.trafficSeries.inbound.length > 60) state.trafficSeries.inbound.shift(); 
-    if (state.trafficSeries.outbound.length > 60) state.trafficSeries.outbound.shift(); 
+    // Keep the chart window to the last 60 data points
+    if (state.trafficSeries.inbound.length > 60) state.trafficSeries.inbound.shift();
+    if (state.trafficSeries.outbound.length > 60) state.trafficSeries.outbound.shift();
 
-    updateCharts(); 
+    updateCharts();
     renderPacketLog();
+    renderDevices();
+    updateSidebarStatus();
 
     document.getElementById("statPackets").textContent =
         data.packet_count.toLocaleString();
+
 }
 
 function init() {

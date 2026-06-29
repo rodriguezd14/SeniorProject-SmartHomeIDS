@@ -115,11 +115,26 @@
             <h3>Connected Device Inventory</h3>
             <input type="search" id="deviceSearch" class="search-box" placeholder="Filter by name or IP" />
           </div>
+
+          <!-- Icon Legend -->
+          <div class="device-legend">
+              <span class="legend-title">Icon Legend:</span>
+              <span class="legend-item" data-icon="🖥️" onclick="filterByIcon('🖥️')" title="This is the machine running the IDS dashboard">🖥️ This Machine</span>
+              <span class="legend-item" data-icon="📡" onclick="filterByIcon('📡')" title="Your network router or gateway device">📡 Gateway/Router</span>
+              <span class="legend-item" data-icon="🔗" onclick="filterByIcon('🔗')" title="DNS server that resolves domain names to IP addresses">🔗 DNS Server</span>
+              <span class="legend-item" data-icon="📢" onclick="filterByIcon('📢')" title="Multicast address used for network discovery and broadcasts">📢 Multicast</span>
+              <span class="legend-item" data-icon="🌍" onclick="filterByIcon('🌍')" title="A server or device outside your local network">🌍 External Server</span>
+              <span class="legend-item" data-icon="💻" onclick="filterByIcon('💻')" title="An unidentified device on your local network">💻 Unknown Device</span>
+          </div>
+
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Icon</th>
+                  <th>
+                    Icon
+                    <span class="info-tip" title="Icons help identify what type of device or connection this is. Hover over the legend above for details.">ℹ️</span>
+                  </th>
                   <th>Device Name</th>
                   <th>IP Address</th>
                   <th>MAC Address</th>
