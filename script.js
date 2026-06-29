@@ -398,6 +398,28 @@ async function loadPcapData() {
 
 }
 
+async function loadAlerts() {
+	const response = await fetch("/api/alerts");
+	const data = await response.json();
+
+	//Onlt ADD alerts we haven't seen yet - never overwrite existine ones
+	//This preserves any "Mark Resolved" clicks the user already made,
+	// instead of wiping them out on the next poll
+	data.alerts.forEach(incoming => {
+		const alreadyExists = state.alerts.some(a => a.id === incoming.id);
+		if (!alreadyExists) {
+			state.alerts.unshift(incoming);
+		}
+	});
+
+	state.alerts = state.alerts.slice(0, 50);
+
+	renderRecentAlerts();
+	renderAlerts();
+	updateBadges();
+	updatesSidebarStatus();
+}
+
 function init() {
   initCharts();
   initEvents();
@@ -411,8 +433,10 @@ async function start() {
     init();
 
     await loadPcapData();
+    await loadAlerts();
 
     setInterval(loadPcapData, 3000);
+    setInterfal(loadAlerts, 3000);
 }
 
 start();
