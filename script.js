@@ -1,3 +1,9 @@
+
+//Coded by Daniel Rodriguez, Simran Gupta, Nicolas Pacheco
+//Date: 7/7/2026
+
+
+
 const state = {
   devices: [
   ],
@@ -399,25 +405,22 @@ async function loadPcapData() {
 }
 
 async function loadAlerts() {
-	const response = await fetch("/api/alerts");
-	const data = await response.json();
+    const response = await fetch("/api/alerts");
+    const data = await response.json();
 
-	//Onlt ADD alerts we haven't seen yet - never overwrite existine ones
-	//This preserves any "Mark Resolved" clicks the user already made,
-	// instead of wiping them out on the next poll
-	data.alerts.forEach(incoming => {
-		const alreadyExists = state.alerts.some(a => a.id === incoming.id);
-		if (!alreadyExists) {
-			state.alerts.unshift(incoming);
-		}
-	});
+    // Preserve any status the user has already set (e.g. Resolved) for alerts we've seen before
+    const existingStatus = new Map(state.alerts.map(a => [a.id, a.status]));
+    state.alerts = data.alerts.map(alert => ({
+        ...alert,
+        status: existingStatus.get(alert.id) || alert.status,
+    }));
 
-	state.alerts = state.alerts.slice(0, 50);
+    state.alertsToday = state.alerts.length;
 
-	renderRecentAlerts();
-	renderAlerts();
-	updateBadges();
-	updatesSidebarStatus();
+    renderRecentAlerts();
+    renderAlerts();
+    updateBadges();
+    updateSidebarStatus();
 }
 
 function init() {
@@ -436,7 +439,7 @@ async function start() {
     await loadAlerts();
 
     setInterval(loadPcapData, 3000);
-    setInterfal(loadAlerts, 3000);
+    setInterval(loadAlerts, 3000);
 }
 
 start();
