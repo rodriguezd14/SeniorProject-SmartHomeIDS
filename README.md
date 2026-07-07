@@ -27,17 +27,23 @@ sudo nano /etc/suricata/suricata.yaml
 ```
 <img width="778" height="200" alt="image" src="https://github.com/user-attachments/assets/5ac9ab1c-7acc-453c-a0f8-a10398655414" />
 <img width="753" height="131" alt="image" src="https://github.com/user-attachments/assets/68148fc4-d94f-41a0-84e3-b641580a186a" />
+
 (it might be a good idea to use sublime to make it faster to find and make the changes)
+
 Update suricate
+
 ```bash
 sudo suricata-update
 ```
 Start and enable suricata to run in the background
+
 ```bash
 sudo systemctl enable suricata
 sudo systemctl start suricata
 ```
+
 Run an nmap scan on the machine then see if the log captures it
+
 ```bash
 sudo tail -f /var/log/suricata/fast.log
 ```
