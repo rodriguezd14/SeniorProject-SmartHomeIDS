@@ -10,7 +10,40 @@ The Smart Home IDS Project captures network traffic, analyzes the captured data,
 
 ## Setup
 
-### 1. Clone github repo into your directory
+### 1. Install Suricata
+Run these commands:
+```bash
+sudo add-apt-repository ppa:oisf/suricata-stable
+sudo apt update
+sudo apt install suricata -y
+```
+Verify suricata has been installed
+```
+suricata --build-info
+```
+Edit the suricata file and add the network address your device is connected to and add the interface
+```
+sudo nano /etc/suricata/suricata.yaml
+```
+<img width="778" height="200" alt="image" src="https://github.com/user-attachments/assets/5ac9ab1c-7acc-453c-a0f8-a10398655414" />
+<img width="753" height="131" alt="image" src="https://github.com/user-attachments/assets/68148fc4-d94f-41a0-84e3-b641580a186a" />
+(it might be a good idea to use sublime to make it faster to find and make the changes)
+Update suricate
+```
+sudo suricata-update
+```
+Start and enable suricata to run in the background
+```
+sudo systemctl enable suricata
+sudo systemctl start suricata
+```
+Run an nmap scan on the machine then see if the log captures it
+```
+sudo tail -f /var/log/suricata/fast.log
+```
+
+
+### 2. Clone github repo into your directory
 
 Cd into the folder
 
@@ -18,7 +51,7 @@ Cd into the folder
 cd SeniorProject-SmartHomeIDS
 ```
 
-### 2. Change the network interface in server.py to the one your machines uses
+### 3. Change the network interface in server.py to the one your machines uses
 
 <img width="753" height="141" alt="image" src="https://github.com/user-attachments/assets/9bea0f7c-18ae-48bb-966f-bfaf1555ce80" />
 
@@ -27,7 +60,7 @@ should be on line 22 if that helps
 
 ---
 
-### 3. Install python packages
+### 4. Install python packages
 when you run
 ```bash
 python3 server.py
@@ -39,7 +72,7 @@ sudo apt install python3-scapy
 ```
 Those should be only two you need
 
-### 4. Running server.py
+### 5. Running server.py
 After you've installed the packages you are ready to run
 ```bash
 server.py
