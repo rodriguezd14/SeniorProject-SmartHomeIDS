@@ -1,11 +1,15 @@
+'''
+Coded by Daniel Rodriguez, Simran Gupta, Nicolas Pacheco
+Date: 7/7/2026
+'''
+
 from flask import Flask, jsonify, send_from_directory
 from scapy.all import sniff, IP
 from collections import Counter, deque
 from datetime import datetime
 import threading
-import json
-import os
-import time
+import subprocess
+import re
 import itertools
 
 # Point Flask precisely to your current project folder
@@ -14,60 +18,77 @@ app = Flask(__name__, static_folder='.', template_folder='.')
 # Fast in-memory array to store packets without hitting the SD card
 packet_buffer = deque(maxlen=200)
 
-#---Suricata alert state-----------------------------------------------------
-SURICATA_LOG_PATH = "/var/log/suricata/eve.json"
-SEVERITY_MAP = {1: "HIGH", 2: "MEDIUM", 3: "LOW"}
-DEDUP_WINDOW_SECONDS = 20 #ignore repeatalerts for the same signature+source this often
-alert_buffer = deque(maxlen=100) #newest-last; dashbord reads the latest 50
-recent_alert_keys = {}
+# In-memory store of Suricata alerts (most recent 200)
+alert_buffer = deque(maxlen=200)
+alert_id_counter = itertools.count(1)
 
-def process_alert_event(event):
-	"""Take one parsed Suricata 'alert' event from eve.json and store it for the dashboard."""
-	alert_data = event.get("alert", {})
-	signature = alert_data.get("signature", "Unknown Alert")
-	signature_id = alert_data.get("signature_id")
-	category = alert_data.get("category", "Uncategorzied")
-	severity_num = alert_data.get("severity", 3)
-	src_ip = event.get("src_ip", "unknown")
-	dest_ip = event.get("dest_ip", "unknown")
-	
-	dedup_key = (signature_id, src_ip)
-	now = time.time()
-	last_seen = recent_alert_keys.get(dedup_key)
-	if last_seen and (now - last_seen) < DEDUP_WINDOW_SECONDS:
-		return
-	recent_alert_keys[dedup_key] = now
+SURICATA_LOG_PATH = "/var/log/suricata/fast.log"
 
-	alert_buffer.append({
-		"id": next(alert_id_counter),
-		"title": signature,
-		"description": f"{category} - traffic from {src_ip} to {dest_ip}",
-		"severity": SEVERITY_MAP.get(severity_num, "LOW"),
-		"status": "ACTIVE",
-		"sourceIP": src_ip,
-		"target": dest_ip,
-		"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-	})
+# Matches classic Suricata fast.log lines, e.g.:
+# 07/07/2026-12:34:56.789012  [**] [1:2100498:7] GPL ATTACK_RESPONSE id check returned root [**]
+# [Classification: Potentially Bad Traffic] [Priority: 2] {TCP} 192.168.1.5:1234 -> 192.168.1.1:80
+FAST_LOG_PATTERN = re.compile(
+    r"^(?P<timestamp>\S+)\s+\[\*\*\]\s+\[\d+:\d+:\d+\]\s+(?P<msg>.*?)\s+\[\*\*\]\s+"
+    r"\[Classification:\s*(?P<classification>.*?)\]\s+\[Priority:\s*(?P<priority>\d+)\]\s+"
+    r"\{(?P<proto>\w+)\}\s+(?P<src>[\d.]+)(?::(?P<sport>\d+))?\s+->\s+(?P<dst>[\d.]+)(?::(?P<dport>\d+))?"
+)
 
-def tail_suricata_alerts():
-	"""Background thread that tails Suricaata's eve.json and feeds new alerts into alert_buffer."""
-	while not os.path.exists(SURICAATA_LOG_PATH):
-		print("Waiting for Suricata log file to appear at", SURICARA_LOG_PATH)
-		time.sleep(2)
+PRIORITY_TO_SEVERITY = {"1": "HIGH", "2": "MEDIUM", "3": "LOW"}
 
-	with open (SURICATA_LOG_PATH, "r") as f:
-		f.seek(0, os.SEEK_END)
-		while True:
-			line = f.readline()
-			if not line:
-				time.sleep(0.5)
-				continue
-			try:
-				event = json.loads(line)
-			except json.JSONDecodeError:
-				continue
-			if event.get("event_type") == "alert":
-				process_alert_event(event)
+
+def parse_fast_log_line(line):
+    """Parse a single Suricata fast.log line into the alert dict shape script.js expects."""
+    match = FAST_LOG_PATTERN.match(line)
+    if not match:
+        return None
+
+    data = match.groupdict()
+
+    # fast.log timestamps look like 07/07/2026-12:34:56.789012
+    try:
+        ts = datetime.strptime(data["timestamp"].split(".")[0], "%m/%d/%Y-%H:%M:%S")
+        time_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        time_str = data["timestamp"]
+
+    severity = PRIORITY_TO_SEVERITY.get(data["priority"], "MEDIUM")
+    src_ip = data["src"] + (f":{data['sport']}" if data.get("sport") else "")
+    target = data["dst"] + (f":{data['dport']}" if data.get("dport") else "")
+
+    return {
+        "id": next(alert_id_counter),
+        "title": data["msg"],
+        "description": f"{data['classification']} ({data['proto']})",
+        "severity": severity,
+        "status": "ACTIVE",
+        "sourceIp": src_ip,
+        "target": target,
+        "time": time_str,
+    }
+
+
+def live_alert_tailer():
+    """Background thread that tails Suricata's fast.log and parses new alerts as they arrive."""
+    while True:
+        try:
+            # -F follows the file across log rotation; -n0 skips existing history on startup
+            process = subprocess.Popen(
+                ["sudo", "tail", "-F", "-n", "0", SURICATA_LOG_PATH],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            for line in process.stdout:
+                line = line.strip()
+                if not line:
+                    continue
+                alert = parse_fast_log_line(line)
+                if alert:
+                    alert_buffer.append(alert)
+        except Exception as e:
+            print(f"Alert tailer error: {e}")
+            threading.Event().wait(2)
 
 def live_packet_sniffer():
     """Background thread that captures live packets on eth0 safely."""
@@ -129,7 +150,15 @@ def get_traffic():
 
 @app.route("/api/alerts")
 def get_alerts():
-    return jsonify({"alerts": list(alert_buffer)[-50:0]})
+    try:
+        current_alerts = list(alert_buffer)
+        current_alerts.reverse()  # newest first
+        return jsonify({
+            "alerts": current_alerts,
+            "alert_count": len(current_alerts),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "alerts": [], "alert_count": 0})
 
 # --- Web Server Asset Core Endpoints ---
 @app.route("/")
@@ -149,7 +178,8 @@ if __name__ == "__main__":
     sniffer_thread = threading.Thread(target=live_packet_sniffer, daemon=True)
     sniffer_thread.start()
 
-    alert_thread = threading.Thread(target=tail_suricata_alerts, daemon=True)
+    # Fire up the background Suricata alert tailer
+    alert_thread = threading.Thread(target=live_alert_tailer, daemon=True)
     alert_thread.start()
 
     # Run the webapp with full multi-threading enabled
